@@ -1,0 +1,382 @@
+'*********************************************************************
+'
+' Copyright (c) 2019-2022 TheMrCerebro
+'
+' SNAKEbit - Zlib license.
+'
+' This software is provided 'as-is', without any express or
+' implied warranty. In no event will the authors be held
+' liable for any damages arising from the use of this software.
+'
+' Permission is granted to anyone to use this software for any purpose,
+' including commercial applications, and to alter it and redistribute
+' it freely, subject to the following restrictions:
+'
+' 1. The origin of this software must not be misrepresented;
+' you must not claim that you wrote the original software.
+' If you use this software in a product, an acknowledgment
+' in the product documentation would be appreciated but
+' is not required.
+'
+' 2. Altered source versions must be plainly marked as such,
+' and must not be misrepresented as being the original software.
+'
+' 3. This notice may not be removed or altered from any
+' source distribution.
+'
+'*********************************************************************
+
+#GLFW_WINDOW_TITLE="SNAKEbit - by TheMrCerebro"
+#GLFW_WINDOW_WIDTH=512
+#GLFW_WINDOW_HEIGHT=512
+#MOJO_IMAGE_FILTERING_ENABLED=False
+ 
+Import mojo
+
+Import inc.autofit
+Import inc.coldet
+Import inc.hscore
+Import inc.particles
+Import inc.waves
+Import inc.fonts
+
+Function Main()
+	New Game()
+End
+
+Class TAIL
+	Field x:int,y:int,r:int,e:bool,t:bool
+End
+
+Class Game Extends App
+
+	'constructor
+	Method OnCreate()
+
+		SetVirtualDisplay(64,64)
+		SetUpdateRate(8)
+		Seed = Millisecs()
+		
+		LoadFont("terminal.fnt")
+				
+		'Carga las imagenes
+		imgFruit = LoadImage("fruit.png")
+		imgTitle = LoadImage("title.png")
+		imgBackground = LoadImage("background.png")
+		imgHead=LoadImage("head.png",2,Image.MidHandle)
+		imgBody = LoadImage("body.png",3,Image.MidHandle)
+		imgTail = LoadImage("tail.png",1,Image.MidHandle)
+		imgTongue = LoadImage("tongue.png",19)
+		imgEye=LoadImage("eye.png")
+		
+		'Carga los sonidos
+		sndEat = LoadSound("eat.wav")
+		sndDie = LoadSound("die.wav")
+		sndSelect = LoadSound("select.wav")
+		
+		'Carga la musica
+		PlayMusic("SNAKEbit - Theme.ogg")
+		
+		'Crea una lista ficticia de puntuaciones
+		AddScore(325,"TMC")
+		AddScore(25,"JAM")
+		AddScore(105,"DDF")
+		AddScore(210,"JDP")
+		AddScore(60,"LDS")
+		
+	end
+	
+	Method OnUpdate()
+
+		#If TARGET="glfw"
+		If KeyHit(KEY_ESCAPE) Then EndApp()
+		If KeyHit(KEY_F4)
+			fullscreen=Not fullscreen
+			If fullscreen
+				SetDeviceWindow(DesktopMode.Width,DesktopMode.Height,1)
+				HideMouse()
+			Else
+				SetDeviceWindow(512,512,4)
+				ShowMouse()
+			Endif
+		Endif
+		#Endif
+
+		Select state
+
+		Case STATE_MENU
+        		
+        	If KeyHit(KEY_X)
+	
+				score=0
+				sx=32
+				sy=32
+				sr=0
+					
+				ex = Int(Rnd(0,15))*4
+				ey = Int(Rnd(8,15))*4
+	        
+	        	For Local i:int=0 until 2
+	        		Local tls:=New TAIL
+	        		tls.x=sx
+	        		tls.y=sy
+					tlsA.AddLast(tls)
+				next
+				
+				PlaySound(sndSelect)			
+				state=1
+
+			endif
+        		
+		Case STATE_INGAME
+
+			Local turn:bool
+    		If KeyHit(KEY_UP) And Not (sr=1)
+				sr=3
+				turn=true
+			Elseif KeyHit(KEY_DOWN) And Not (sr=3)
+				sr=1
+				turn=true
+			Elseif KeyHit(KEY_LEFT) And Not (sr=0)
+				sr=2
+				turn=true
+			Elseif KeyHit(KEY_RIGHT) And Not (sr=2)
+				sr=0
+				turn=true
+			endif
+			
+			'Move head into new direction (now there is a gap)
+			Local nx:int = sx + Int(Cos(sr*90)*4)
+			Local ny:int = sy + Int(Sin(sr*90)*4)
+
+			'Move last Tail Element to where the Head was
+			tlsA.Last().x = sx
+			tlsA.Last().y = sy
+			tlsA.Last().r = sr
+			tlsA.Last().e = eat
+			tlsA.Last().t=turn
+					
+			'Add to front of list, remove from the back
+			tlsA.AddFirst(tlsA.Last())
+			tlsA.RemoveLast()
+			
+           	'Si la cabeza de la serpiente colisiona con el huevo...
+	        If nx=ex And ny=ey
+	        												
+	        	PlaySound(sndEat)
+
+				Local valid:bool = False
+				While Not valid
+				
+					'Get a random position
+ 					Local ax:int = Int(Rnd(0,15))*4
+					Local ay:int = Int(Rnd(8,15))*4
+ 
+					'Make sure the snake doesn't overlap the new apple
+					Local overlap:bool = False
+					For Local tls:=Eachin tlsA
+						'Check overlap
+						If ax=tls.x and ay=tls.y
+		                    overlap = true
+		                    Exit
+	                    endif
+ 					Next
+ 					
+					'Tile must be empty
+		            If Not overlap And Not (ex=ax And ey=ay)
+		                ex=ax
+		                ey=ay
+		                eyes=10
+						AddEmitter(ex+4,ey+4,0,0,255,0,255,16,0.05)
+						AddWave(ex+4,ey+4,192,0,192,4)	
+		                valid = true
+		            endif
+
+				Wend
+				
+				'Grow the snake
+				Local tls:=New TAIL
+				tls.x=tlsA.Last().x
+				tls.y=tlsA.Last().y
+				tls.r=tlsA.Last().r
+				tls.e=tlsA.Last().e
+				tlsA.AddLast(tls)
+				
+				'Add a point to the score
+				score += 5
+				
+				eat=True
+			Else
+				eat=false
+			Endif
+			
+			'Move head to new location
+			sx=nx
+			sy=ny
+			
+			If sx<0 Or sx>56 Or sy<8 Or sy>56
+				shake = 5
+				parA.Clear()
+				CheckScore()
+				PlaySound(sndDie)
+				state=2
+			endif
+			
+			For Local tls:=Eachin tlsA
+				If sx=tls.x And sy=tls.y
+					CheckScore()
+					PlaySound(sndDie)
+					state=2	
+				Endif
+			Next
+			
+			If eyes>0 Then eyes-=1
+		
+		Case STATE_OVER
+			
+			'Si hay una nueva puntuacion...
+			If ranking
+				Repeat
+					Local char=GetChar()
+					If Not char Then Exit
+					If char>=97 And char<=122
+						txt+=String.FromChar(char).ToUpper()
+						PlaySound(sndSelect)
+					Endif
+					If txt.Length()>2
+						AddScore(score,txt)
+						ranking=false
+					Endif
+				Forever
+			Else
+				If KeyHit(KEY_X)
+					tlsA.Clear()
+					txt=""
+					score=0
+					PlaySound(sndSelect)
+					state=STATE_MENU	
+				Endif
+			Endif
+		        
+		End
+		
+		UpdateParticles()
+		UpdateWaves()
+		
+	End
+
+    Method OnRender()
+    	
+	    UpdateVirtualDisplay()
+
+		SetColor(0,255,0)
+		SetAlpha(0.1)
+		For Local i:int=0 To 63
+			Local x:float=i Mod 8
+			Local y:float=i / 8
+			PushMatrix()
+				Translate(4+x*8,4+y*8)
+				Rotate(0.01 * Millisecs() Mod 360)
+				Translate(-2,-2)
+				Rect(0,0,4,4)
+			PopMatrix()
+		Next
+			
+		'Actualiza el temblor de la pantalla
+		If shake>0
+			shake-=1
+			Translate(Rnd(-1,1),Rnd(-1,1))
+		Endif
+		
+		DrawParticles()
+		DrawWaves()
+
+		Select state
+		
+		Case STATE_MENU
+	            
+			DrawImage(imgTitle,0,2)
+
+			DrawImage(imgTongue,53,12,0.01 * Millisecs() Mod 18)
+			
+			Text("[TheMrCerebro]",32,58,0.5,0.5)
+
+			SetAlpha(0.5+Cos(0.5 * Millisecs() Mod 360)*0.5)
+			SetColor(192,192,0)
+
+			Text("Press",32,25,0.5,0.5)
+			Text("-X-",32,25+7,0.5,0.5)
+			Text("to",32,25+7+7,0.5,0.5)
+			Text("HUNT",32,25+7+7+7,0.5,0.5)
+			
+		Case STATE_INGAME
+						
+			For Local tls:= Eachin tlsA
+				If tls=tlsA.Last
+					DrawImage(imgTail,tls.x+4,tls.y+4,tls.r*270,1,1,0)
+				Else
+					If tls.t
+						DrawImage(imgBody,tls.x+4,tls.y+4,2)
+					else
+						DrawImage(imgBody,tls.x+4,tls.y+4,tls.r*270,1,1,tls.e)
+					endif
+				endif
+			Next
+    
+			DrawImage(imgHead,sx+4,sy+4,sr*270,1,1,eat)
+
+			DrawImage(imgFruit,ex,ey)
+
+			DrawImage(imgBackground,0,0)
+			
+			If eyes>0
+				SetAlpha(eyes*0.1)
+				DrawImage(imgEye,1,2)
+				DrawImage(imgEye,63,2,0,-1,1)
+			endif
+			
+			SetAlpha(1)
+			SetColor(0,255,0)
+			
+	        Local str$
+	        If score<10 Then str+="0"
+	        If score<100 Then str+="0"
+			Text(str+score,31.5,0,0.5,0)
+
+		Case STATE_OVER
+		
+			SetColor(0,255,0)
+
+			DrawScores(255,0,0,255,255,0)
+			  	
+      	End
+	
+	End
+	
+Private
+
+	'listas
+	Field tlsA:=New List<TAIL>
+			
+	'imagenes
+	Field imgFruit:Image
+	Field imgTitle:Image
+	Field imgBackground:Image
+	Field imgHead:Image
+	Field imgBody:Image
+	Field imgTail:Image
+	Field imgTongue:Image
+	Field imgEye:Image
+
+	'sonidos
+	Field sndEat:Sound
+	Field sndDie:Sound
+	Field sndSelect:Sound
+	
+	'variables
+	Enumerate STATE_MENU,STATE_INGAME,STATE_OVER
+	Field state:int,fullscreen:bool,shake:int,eyes:int
+	Field sx:int,sy:int,sr:int,eat:bool'Serpiente
+	Field ex:int,ey:int'Fruta
+
+End
