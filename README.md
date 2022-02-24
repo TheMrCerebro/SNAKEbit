@@ -6,7 +6,7 @@ Game developed by me using Cerberus X
 </br>
 
 ## Introduction
-BREAKbit is a game similar to the Arkanoid or Brakeout game on some video game consoles. You will have to break bricks throughout 29 levels using the powerups that are within your reach to make it easier.
+OMG, the snake is hungry, help her!!. Guide the snake into the box and make it eat all the eggs you find. It is very simple, the more the snake eats, the longer it becomes.
 </br>
 
 <img src="https://user-images.githubusercontent.com/99989085/155517106-47fc902a-e55b-4a75-b71a-79f6a3dd7283.png" width="256" height="256" />     <img src="https://user-images.githubusercontent.com/99989085/155517128-f4f0090d-7bf0-4da6-9c88-fcda110fa9f8.png" width="256" height="256" />     <img src="https://user-images.githubusercontent.com/99989085/155517138-7264edc1-4762-4abd-82d4-45b9e57ce8ce.png" width="256" height="256" >
@@ -14,9 +14,8 @@ BREAKbit is a game similar to the Arkanoid or Brakeout game on some video game c
 </br>
 
 ## Controls
-- Left/Right - Move the paddle
-- X - Accept/Init
-- F4 - Full screen/Window mode (Windows Only)
+- Up, Down, Left, Right - Move de snake
+- X - Accept
 </br>
 
 ## Troubleshooting
